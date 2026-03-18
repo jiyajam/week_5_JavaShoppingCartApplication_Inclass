@@ -1,10 +1,12 @@
-# Use a supported Temurin Java image
-FROM eclipse-temurin:17-jdk
+FROM  maven:3.9.6-eclipse-temurin-21 AS build
+LABEL authors="jiya"
 
 WORKDIR /app
 
-# Copy your JAR
-COPY target/week_5_JavaShoppingCartApplication_Inclass-1.0-SNAPSHOT.jar app.jar
+COPY pom.xml .
 
-# Run the JAR
-CMD ["java", "-jar", "app.jar"]
+COPY . /app
+
+RUN mvn package
+
+CMD ["java", "-jar", "target/laskin.jar"]

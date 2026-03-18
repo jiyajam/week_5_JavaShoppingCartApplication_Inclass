@@ -1,68 +1,65 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_HUB_USER = "jiyajameela"            // Docker Hub username
-        DOCKERHUB_CREDENTIALS = "jiyak"           // Jenkins credential ID
-        IMAGE_NAME = "shopping-cart-app"
-        BUILD_TAG = "${env.BUILD_NUMBER}"         // Unique tag per Jenkins build
-        DOCKER_IMAGE = "${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}"
-        CONTAINER_NAME = "${IMAGE_NAME}-${BUILD_TAG}" // Unique container name
+    tools {
+        maven 'Maven3'
     }
+
+    environment {
+        PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
+        DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
+        DOCKERHUB_REPO = 'jiyajameela/shopping-cart-app'
+        DOCKER_IMAGE_TAG = 'v1'
+    }
+
+
 
     stages {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/jiyajam/week_5_JavaShoppingCartApplication_Inclass'
+                git ''
             }
         }
 
-        stage('Build JAR') {
+        stage('Build') {
             steps {
-                sh 'mvn clean package'
+                bat 'mvn clean install'
+            }
+        }
+
+        stage('Generate Report') {
+            steps {
+                bat 'mvn jacoco:report'
+            }
+        }
+
+
+        stage('Publish Coverage Report') {
+            steps {
+                jacoco()
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE} ."
-            }
-        }
-
-        stage('Login to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}",
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                script {
+                    docker.build("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}")
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                sh "docker push ${DOCKER_IMAGE}"
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS_ID) {
+                        docker.image("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}").push()
+                    }
+                }
             }
         }
 
-        stage('Run Container for Testing') {
-            steps {
-                // Stop & remove old container if exists
-                sh "docker rm -f ${CONTAINER_NAME} || true"
 
-                // Run new container
-                sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${DOCKER_IMAGE}"
-            }
-        }
-    }
 
-    post {
-        always {
-            echo "Pipeline finished for build #${BUILD_NUMBER}"
-        }
-        failure {
-            echo "Build #${BUILD_NUMBER} failed!"
-        }
     }
 }
