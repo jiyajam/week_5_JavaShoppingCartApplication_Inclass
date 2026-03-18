@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        DOCKER_HUB_USER = "jiyajameela"
+        DOCKER_HUB_USER = "jiyak"
         DOCKERHUB_CREDENTIALS = "jiyak"
         IMAGE_NAME = "shopping-cart-app"
         BUILD_TAG = "${env.BUILD_NUMBER}"
