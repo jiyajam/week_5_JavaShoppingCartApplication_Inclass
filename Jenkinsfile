@@ -1,65 +1,65 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven3'
-    }
-
     environment {
-        PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
-        DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
-        DOCKERHUB_REPO = 'jiyajameela/shopping-cart-app'
-        DOCKER_IMAGE_TAG = 'v1'
+        DOCKER_HUB_USER = "jiyajameela"
+        DOCKERHUB_CREDENTIALS = "jiyak"
+        IMAGE_NAME = "shopping-cart-app"
+        BUILD_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = "${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}"
+        CONTAINER_NAME = "${IMAGE_NAME}-${BUILD_TAG}"
     }
-
-
 
     stages {
 
         stage('Checkout') {
             steps {
-                git ''
+                git branch: 'main', url: 'https://github.com/jiyajam/week_5_JavaShoppingCartApplication_Inclass.git'
             }
         }
 
-        stage('Build') {
+        stage('Build JAR') {
             steps {
-                bat 'mvn clean install'
-            }
-        }
-
-        stage('Generate Report') {
-            steps {
-                bat 'mvn jacoco:report'
-            }
-        }
-
-
-        stage('Publish Coverage Report') {
-            steps {
-                jacoco()
+                sh 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    docker.build("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}")
-                }
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
-        stage('Push Docker Image to Docker Hub') {
+        stage('Login to Docker Hub') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS_ID) {
-                        docker.image("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}").push()
-                    }
+                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
                 }
             }
         }
 
+        stage('Push Docker Image') {
+            steps {
+                sh "docker push ${DOCKER_IMAGE}"
+            }
+        }
 
+        stage('Run Container for Testing') {
+            steps {
+                sh "docker rm -f ${CONTAINER_NAME} || true"
+                sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${DOCKER_IMAGE}"
+            }
+        }
+    }
 
+    post {
+        always {
+            echo "Pipeline finished for build #${BUILD_NUMBER}"
+        }
+        failure {
+            echo "Build #${BUILD_NUMBER} failed!"
+        }
     }
 }

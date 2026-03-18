@@ -9,4 +9,4 @@ COPY . /app
 
 RUN mvn package
 
-CMD ["java", "-jar", "target/laskin.jar"]
+CMD ["java", "-jar", "target/week_5_JavaShoppingCartApplication_Inclass-1.0-SNAPSHOT.jar"]
