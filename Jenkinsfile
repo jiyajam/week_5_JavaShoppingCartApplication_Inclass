@@ -2,8 +2,12 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "jiyajameela/shopping-cart-app:1.0" // Docker Hub image name
-        DOCKERHUB_CREDENTIALS = "jiyak"         // Jenkins credential ID
+        DOCKER_HUB_USER = "jiyajameela"            // Docker Hub username
+        DOCKERHUB_CREDENTIALS = "jiyak"           // Jenkins credential ID
+        IMAGE_NAME = "shopping-cart-app"
+        BUILD_TAG = "${env.BUILD_NUMBER}"         // Unique tag per Jenkins build
+        DOCKER_IMAGE = "${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}"
+        CONTAINER_NAME = "${IMAGE_NAME}-${BUILD_TAG}" // Unique container name
     }
 
     stages {
@@ -44,21 +48,21 @@ pipeline {
 
         stage('Run Container for Testing') {
             steps {
-                // Stop and remove old container if exists
-                sh "docker rm -f shopping-cart-app || true"
+                // Stop & remove old container if exists
+                sh "docker rm -f ${CONTAINER_NAME} || true"
 
-                // Run container
-                sh "docker run -d --name shopping-cart-app -p 8080:8080 ${DOCKER_IMAGE}"
+                // Run new container
+                sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${DOCKER_IMAGE}"
             }
         }
     }
 
     post {
         always {
-            echo 'Pipeline finished'
+            echo "Pipeline finished for build #${BUILD_NUMBER}"
         }
         failure {
-            echo 'Build failed!'
+            echo "Build #${BUILD_NUMBER} failed!"
         }
     }
 }
