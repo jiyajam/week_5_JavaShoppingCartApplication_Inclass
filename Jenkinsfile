@@ -2,45 +2,53 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "shopping-cart-app"
+        DOCKER_IMAGE = "jiyajameela/shopping-cart-app:1.0" // Docker Hub image name
+        DOCKERHUB_CREDENTIALS = "jiyak"         // Jenkins credential ID
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                // Get code from Git (replace with your repo)
-                git 'https://github.com/your-username/your-repo.git'
+                git 'https://github.com/jiyajam/week_5_JavaShoppingCartApplication_Inclass'
             }
         }
 
         stage('Build JAR') {
             steps {
-                // Use Maven to build the project
                 sh 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    // Build Docker image
-                    sh "docker build -t ${DOCKER_IMAGE} ."
+                sh "docker build -t ${DOCKER_IMAGE} ."
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
                 }
             }
         }
 
-        stage('Run Container') {
+        stage('Push Docker Image') {
             steps {
-                // Optional: run container (for testing)
-                sh "docker run -d --name ${DOCKER_IMAGE} -p 8080:8080 ${DOCKER_IMAGE}"
+                sh "docker push ${DOCKER_IMAGE}"
             }
         }
 
-        stage('Clean Up') {
+        stage('Run Container for Testing') {
             steps {
-                // Optional: stop & remove container
-                sh "docker rm -f ${DOCKER_IMAGE} || true"
+                // Stop and remove old container if exists
+                sh "docker rm -f shopping-cart-app || true"
+
+                // Run container
+                sh "docker run -d --name shopping-cart-app -p 8080:8080 ${DOCKER_IMAGE}"
             }
         }
     }
@@ -48,6 +56,9 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished'
+        }
+        failure {
+            echo 'Build failed!'
         }
     }
 }
